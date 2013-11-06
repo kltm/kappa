@@ -1,2 +1,3 @@
 * kappa
-  General purpose simple Common Lisp web agent inspired by WWW::Mechanize.
+  General purpose simple Common Lisp web agent inspired by
+  WWW::Mechanizeand based on Drakma.
