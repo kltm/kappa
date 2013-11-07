@@ -26,7 +26,7 @@
    ;; form # TODO
    ;; Agent slots.
    user-agent
-   current-link
+   current-url
    errors
    content
    code
@@ -396,8 +396,8 @@
     :accessor user-agent
     :initform +user-agent+
     :initarg :user-agent)
-   (current-link
-    :accessor current-link
+   (current-url
+    :accessor current-url
     :initform nil)
    (errors
     :accessor errors
@@ -432,8 +432,8 @@
     (when +make-canonical+
       (setf raw-links
 	    (mapcar (lambda (x)
-		      ;;(format t "c: [~A] [~A]~%" x (current-link agent))
-		      (make-canonical x :relative-to (current-link agent)))
+		      ;;(format t "c: [~A] [~A]~%" x (current-url agent))
+		      (make-canonical x :relative-to (current-url agent)))
 		    raw-links)))
     ;; ;; Optionally remove the fragment before processing. 
     ;; (when +clean-links+
@@ -469,6 +469,12 @@
 		 ((search "png" (cdr (assoc :CONTENT-TYPE headers))) "")
 		 ((search "gif" (cdr (assoc :CONTENT-TYPE headers))) "")
 		 ((search "pdf" (cdr (assoc :CONTENT-TYPE headers))) "")
+		 ;; TODO: Or, for that matter, tarballs.
+		 ((search "tgz" (cdr (assoc :CONTENT-TYPE headers))) "")
+		 ((search "bz2" (cdr (assoc :CONTENT-TYPE headers))) "")
+		 ((search "zip" (cdr (assoc :CONTENT-TYPE headers))) "")
+		 ((search "gzip" (cdr (assoc :CONTENT-TYPE headers))) "")
+		 ((search "gz" (cdr (assoc :CONTENT-TYPE headers))) "")
 		 (t (fill-with-content ,agent body)))
 	       (setf (code ,agent) response-code)
 	       ;; Return if we made it without an error.
@@ -523,7 +529,7 @@
 (defmethod fetch ((agent agent) link)
   "Fetch a URL with a string for the link argument."
   (purge agent)
-  (setf (current-link agent) link)
+  (setf (current-url agent) link)
   (with-fetch-attempt agent +agent-timeout+
     (http-request link :redirect 100 :user-agent (user-agent agent))))
 
@@ -532,7 +538,7 @@
 
 (defmethod purge ((agent agent))
   "Purge emphemeral materials from the agent."
-  (setf (current-link agent) nil)
+  (setf (current-url agent) nil)
   (setf (errors agent) '())
   (setf (content agent) nil)
   (setf (code agent) nil)
@@ -564,17 +570,17 @@
 (defmethod submit ((agent agent) (form form))
   "Much the same as fetch, but with a form as the action base."
   ;; Get the things I want out of the agent before purging.
-  (let ((old-link (current-link agent))
+  (let ((old-url (current-url agent))
 	(action (action form))
 	(verb (verb form))
 	(parameters (to-drakma-parameters form))) ; to be used as drakma's
     (purge agent) ; Clean out old stuff.
     ;;; Straighten links.
-    (setf (current-link agent) (make-canonical action :relative-to old-link))
+    (setf (current-url agent) (make-canonical action :relative-to old-url))
     ;; Run.
     (with-fetch-attempt agent +agent-timeout+
       (http-request
-       (current-link agent)
+       (current-url agent)
        ;; Verbs need to be either :POST or :GET
        :method (if (or (eq verb :POST) (string-equal verb "POST")) :POST :GET)
        :redirect 100
@@ -650,7 +656,9 @@ some interesting bugs..."
 		    (or
 		     (not (> (length x) 0)) ; bigger than 0
 		     (cl-ppcre::scan "^#" x) ; not a JS hash trick
-		     (cl-ppcre::scan "^ftp\:\/\/" x))) ; not ftp
+		     (cl-ppcre::scan "^ftp\:\/\/" x) ; not ftp
+		     (cl-ppcre::scan "^mailto\:" x) ; not "mailto"
+		     (cl-ppcre::scan "^feed\:\/\/" x))) ; not a "feed" link
 		  (PURI:URI-PARSE-ERROR (upe) (declare (ignore upe)) t)))
 	     list))
 
