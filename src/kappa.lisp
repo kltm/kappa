@@ -77,8 +77,18 @@
   (puri::reserved-char-vector
    puri::*excluded-characters* :except '(#\^ #\| #\#)))
 
+;;;
+;;; chunga variations.
+;;;
+
 ;; TODO: push this down so it only shadows
 (setf chunga:*accept-bogus-eols* t)
+
+;;;
+;;; flexi-streams variations.
+;;;
+
+(setf flexi-streams:*substitution-char* #\?)
 
 ;;;
 ;;; Form: complicate our lives.
@@ -491,6 +501,9 @@
        (PURI:URI-PARSE-ERROR
 	   (upe) (declare (ignore upe))
 	   (glitch "uri parse error"))
+       (RUNES-ENCODING:ENCODING-ERROR
+	   (ree) (declare (ignore ree))
+	   (glitch "appears to be some type of encoding issue"))
        (CHUNGA:SYNTAX-ERROR
 	   (se) (declare (ignore se))
 	   (glitch "chunga: syntax error"))
