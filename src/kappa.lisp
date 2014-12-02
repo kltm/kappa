@@ -682,6 +682,7 @@ some interesting bugs..."
 		     (cl-ppcre::scan "^ftp\:\/\/" x) ; not ftp
 		     (cl-ppcre::scan "^mailto\:" x) ; not "mailto"
 		     (cl-ppcre::scan "^feed\:\/\/" x) ; not a "feed" link
+		     (cl-ppcre::scan "^javascript\:" x) ; not a "js" link
 		     (cl-ppcre::scan "^javascript\:\/\/" x))) ; not a "js" link
 		  (PURI:URI-PARSE-ERROR (upe) (declare (ignore upe)) t)))
 	     list))
