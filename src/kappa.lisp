@@ -26,7 +26,8 @@
    ;; form # TODO
    ;; Agent slots.
    user-agent
-   current-url
+   original-url ; before redirect
+   current-url ; after redirect
    errors
    content
    code
@@ -406,6 +407,9 @@
     :accessor user-agent
     :initform +user-agent+
     :initarg :user-agent)
+   (original-url
+    :accessor original-url
+    :initform nil)
    (current-url
     :accessor current-url
     :initform nil)
@@ -459,9 +463,8 @@
   broad use (e.g. links), see run."))
 
 ;; Helper for catching errors while trying to fetch something.
-;; TODO: would this be better handled by a macro?
 (defmacro with-fetch-attempt (agent timeout &body body)
-  ""
+  "Fill out the body of the agent, as well as error catching."
   `(labels ((glitch (err-str)
 	      (setf (errors ,agent) (cons err-str (errors ,agent)))
 	      nil))
@@ -473,7 +476,7 @@
 	     (multiple-value-bind
 		   (body response-code headers puri stream must-close-p reason)
 		 ,@body
-		 (declare (ignore puri stream must-close-p reason))
+		 (declare (ignore stream must-close-p reason))
 	       (cond
 		 ;; TODO: Doesn't deal with images real well yet.
 		 ((search "png" (cdr (assoc :CONTENT-TYPE headers))) "")
@@ -485,7 +488,13 @@
 		 ((search "zip" (cdr (assoc :CONTENT-TYPE headers))) "")
 		 ((search "gzip" (cdr (assoc :CONTENT-TYPE headers))) "")
 		 ((search "gz" (cdr (assoc :CONTENT-TYPE headers))) "")
-		 (t (fill-with-content ,agent body)))
+		 (t (progn
+		      ;; There may be a redirect, so set current URL
+		      ;; to what comes back from Drakma.
+		      (setf (current-url ,agent) 
+			    (puri:render-uri puri nil))
+		      ;; Now fill the agent woth body contents.
+		      (fill-with-content ,agent body))))
 	       (setf (code ,agent) response-code)
 	       ;; Return if we made it without an error.
 	       t)))
@@ -542,7 +551,7 @@
 (defmethod fetch ((agent agent) link)
   "Fetch a URL with a string for the link argument."
   (purge agent)
-  (setf (current-url agent) link)
+  (setf (original-url agent) link)
   (with-fetch-attempt agent +agent-timeout+
     (http-request link :redirect 100 :user-agent (user-agent agent))))
 
@@ -551,6 +560,7 @@
 
 (defmethod purge ((agent agent))
   "Purge emphemeral materials from the agent."
+  (setf (original-url agent) nil)
   (setf (current-url agent) nil)
   (setf (errors agent) '())
   (setf (content agent) nil)
@@ -588,7 +598,7 @@
 	(verb (verb form))
 	(parameters (to-drakma-parameters form))) ; to be used as drakma's
     (purge agent) ; Clean out old stuff.
-    ;;; Straighten links.
+    ;; Straighten links.
     (setf (current-url agent) (make-canonical action :relative-to old-url))
     ;; Run.
     (with-fetch-attempt agent +agent-timeout+
@@ -671,7 +681,8 @@ some interesting bugs..."
 		     (cl-ppcre::scan "^#" x) ; not a JS hash trick
 		     (cl-ppcre::scan "^ftp\:\/\/" x) ; not ftp
 		     (cl-ppcre::scan "^mailto\:" x) ; not "mailto"
-		     (cl-ppcre::scan "^feed\:\/\/" x))) ; not a "feed" link
+		     (cl-ppcre::scan "^feed\:\/\/" x) ; not a "feed" link
+		     (cl-ppcre::scan "^javascript\:\/\/" x))) ; not a "js" link
 		  (PURI:URI-PARSE-ERROR (upe) (declare (ignore upe)) t)))
 	     list))
 
