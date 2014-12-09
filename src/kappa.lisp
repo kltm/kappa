@@ -31,6 +31,7 @@
    errors
    content
    code
+   wait ; in seconds
    links
    ;; Link slots
    raw-url
@@ -51,7 +52,7 @@
 (in-package :kappa)
 
 
-(defvar *version* "0.1.0" "This version of CL Kappa.")
+(defvar *version* "0.2.0" "This version of CL Kappa.")
 
 (defparameter +user-agent+
   (format nil "CL Kappa ~a (over Drakma)" *version*)
@@ -422,6 +423,9 @@
    (code
     :accessor code
     :initform nil)
+   (wait
+    :accessor wait
+    :initform nil)
    (links
     :accessor links
     :initform '())
@@ -472,16 +476,22 @@
      ;; (with the above function).
      (handler-case
 	 (progn
-	   (trivial-timeout:with-timeout (,timeout)
+	   ;; Trivially set to 0 before we try.
+	   (setf (wait ,agent) 0)
+	   ;; Start timer.
+	   (let ((start-time (get-universal-time)))
+	     ;; Make sure we can bail after a while.
+	     (trivial-timeout:with-timeout (,timeout)
 	     (multiple-value-bind
 		   (body response-code headers puri stream must-close-p reason)
 		 ,@body
-		 (declare (ignore stream must-close-p reason))
+	       (declare (ignore stream must-close-p reason))
 	       (cond
-		 ;; TODO: Doesn't deal with images real well yet.
+		 ;; TODO: Doesn't deal with images (etc.) real well yet.
 		 ((search "png" (cdr (assoc :CONTENT-TYPE headers))) "")
 		 ((search "gif" (cdr (assoc :CONTENT-TYPE headers))) "")
 		 ((search "pdf" (cdr (assoc :CONTENT-TYPE headers))) "")
+		 ((search "word" (cdr (assoc :CONTENT-TYPE headers))) "")
 		 ;; TODO: Or, for that matter, tarballs.
 		 ((search "tgz" (cdr (assoc :CONTENT-TYPE headers))) "")
 		 ((search "bz2" (cdr (assoc :CONTENT-TYPE headers))) "")
@@ -497,7 +507,8 @@
 		      (fill-with-content ,agent body))))
 	       (setf (code ,agent) response-code)
 	       ;; Return if we made it without an error.
-	       t)))
+	       t))
+	     (setf (wait ,agent) (- (get-universal-time) start-time))))
        ;; ;; Special handling for FTP-type errors.
        ;; (DRAKMA:PARAMETER-ERROR
        ;;  (pe) (declare (ignore pe))
@@ -565,6 +576,7 @@
   (setf (errors agent) '())
   (setf (content agent) nil)
   (setf (code agent) nil)
+  (setf (wait agent) nil)
   (setf (links agent) '())
   (setf (forms agent) '())
   t)
