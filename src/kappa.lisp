@@ -509,12 +509,9 @@
 	       ;; Return if we made it without an error.
 	       t))
 	     (setf (wait ,agent) (- (get-universal-time) start-time))))
-       ;; ;; Special handling for FTP-type errors.
-       ;; (DRAKMA:PARAMETER-ERROR
-       ;;  (pe) (declare (ignore pe))
-       ;;  (setf (errors ,agent) (cons "Skipping FTP (right?)" (errors ,agent)))
-       ;;  ;(setf (code ,agent) response-code)
-       ;;  t)
+       (DRAKMA:PARAMETER-ERROR
+	   (pe) (declare (ignore pe))
+	   (glitch "Possibly bad URL schema?"))
        (END-OF-FILE
 	   (eof) (declare (ignore eof))
 	   (glitch "EOF--reached end of file?"))
