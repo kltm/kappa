@@ -7,7 +7,7 @@
 ;;;; URLs known to trip exception:
 ;;;;    http://flybase.bio.indiana.edu/reports/FBgn0086348.html
 ;;;;    http://www.ebi.ac.uk/cgi-bin/emblfetch?style=html&Submit=Go&id=CP000158
-;;;;    http://biocyc.org/META/substring-search?type=NIL&object=PARATHION-DEGRADATION-PWY"   
+;;;;    http://biocyc.org/META/substring-search?type=NIL&object=PARATHION-DEGRADATION-PWY"
 ;;;;
 ;;;; For full arguments, see:
 ;;;; http://common-lisp.net/~loliveira/ediware/drakma/request.lisp
@@ -129,7 +129,7 @@
     (setf (slot-value new-form 'id) (getf form-props :id))
     (setf (slot-value new-form 'verb) (getf form-props :method))
     (setf (slot-value new-form 'name) (getf form-props :name))
-    ;; Scan through by type and add "generic" if not otherwise defined. 
+    ;; Scan through by type and add "generic" if not otherwise defined.
     (dolist (input (getf form-props :inputs))
       (let ((input-type (getf input :type)))
 	(when input-type
@@ -175,13 +175,13 @@
 		 ((eq :INPUT (car tree))
 		  (push (alexandria:flatten (cadr tree)) whittled-list))
 		 ((eq :TEXTAREA (car tree)) ; add textarea type since empty
-		  (push (append '(:type "textarea") 
+		  (push (append '(:type "textarea")
 				(alexandria:flatten (cadr tree)))
 			whittled-list))
 		 ((eq :SELECT (car tree)) ; collect options
 		  (dolist (sub-selects (get-options-from-subtree tree))
 		    (push (append sub-selects
-				  '(:type "select") 
+				  '(:type "select")
 				  (alexandria:flatten (cadr tree)))
 			  whittled-list)))
 		 (t (mapcar #'input-search tree)))))
@@ -232,7 +232,7 @@
 	       (string= input-type "RADIO"))
 	   (when (string-equal (getf input :checked) "CHECKED")
 	     (push (cons (getf input :name) (getf input :value)) parameters)))
-	  
+
 	  ((string= input-type "SELECT")
 	   (when (string-equal (getf input :selected) "SELECTED")
 	     (push (cons (getf input :name) (getf input :value)) parameters)))
@@ -274,7 +274,7 @@
     (mapcar
      (lambda (input) (setf (getf input property) new-value))
      inputs-to-change)))
-	  
+
 (defgeneric add-input-property (form new-prop new-val &rest plist-def)
   (:documentation "Add a new input proprty to the form."))
 
@@ -286,7 +286,7 @@
     ;; Remove them to make room for the dopplegangers.
     (apply 'remove-input (cons form plist-def))
     ;; Add the dopplegangers to replace the originals.
-    (mapcar 
+    (mapcar
      (lambda (r)
        (apply #'add-input (append (list form new-prop new-value) r)))
      inputs-to-add-to)))
@@ -302,7 +302,7 @@
     ;; Remove them to make room for the dopplegangers.
     (apply 'remove-input (cons form plist-def))
     ;; Add the dopplegangers to replace the originals.
-    (mapcar 
+    (mapcar
      (lambda (r)
        (remf r del-prop)
        (apply #'add-input (cons form r)))
@@ -332,7 +332,7 @@
 ;;; Link: convenience layer over puri.
 ;;;
 
-;; 
+;;
 (defclass link (puri:uri)
   ((raw-url
     :accessor raw-url
@@ -446,14 +446,14 @@
   (setf (content agent) content)
   (setf (forms agent) (make-forms-from-doc content))
   (let ((raw-links (extract-links content)))
-    ;; Optionally make the links full (canonical) before processing. 
+    ;; Optionally make the links full (canonical) before processing.
     (when +make-canonical+
       (setf raw-links
 	    (mapcar (lambda (x)
 		      ;;(format t "c: [~A] [~A]~%" x (current-url agent))
 		      (make-canonical x :relative-to (current-url agent)))
 		    raw-links)))
-    ;; ;; Optionally remove the fragment before processing. 
+    ;; ;; Optionally remove the fragment before processing.
     ;; (when +clean-links+
     ;;   ;; Remove jumps.
     ;;   (setf raw-links (mapcar (lambda (x)
@@ -501,7 +501,7 @@
 		 (t (progn
 		      ;; There may be a redirect, so set current URL
 		      ;; to what comes back from Drakma.
-		      (setf (current-url ,agent) 
+		      (setf (current-url ,agent)
 			    (puri:render-uri puri nil))
 		      ;; Now fill the agent woth body contents.
 		      (fill-with-content ,agent body))))
@@ -662,10 +662,15 @@ some interesting bugs..."
 ;;                            (chtml:parse doc (chtml:make-lhtml-builder)))))
 ;;       (scan-out-links flattened-tree))))
 
+;; URLs in hrefs can have whitespace.
+;; https://www.w3.org/TR/2014/REC-html5-20141028/infrastructure.html#valid-url-potentially-surrounded-by-spaces
+(defun trim (str)
+  (string-trim '(#\Space #\Newline #\Backspace #\Tab #\Linefeed #\Page #\Return #\Rubout) str))
+
 (defun extract-links (doc)
   "Will not include nulls, jump-onlys, and FTP."
   (let ((try-list (get-link-like-things doc)))
-    (sane-urls-only try-list)))
+    (mapcar #'trim (sane-urls-only try-list))))
 
 (defun get-link-like-things (doc)
   (let ((whittled-list '()))
@@ -683,7 +688,7 @@ some interesting bugs..."
   "Remove urls that are likely bogus."
   (remove-if #'(lambda (x)
 		 (handler-case
-		  (progn 
+		  (progn
 		    (puri:parse-uri x) ; make sure edible by puri
 		    (or
 		     (not (> (length x) 0)) ; bigger than 0
@@ -726,4 +731,3 @@ some interesting bugs..."
      f1 :selected "selected" :name "speciesdb" :value "mgi")
     (submit a f1)
     a))
-
